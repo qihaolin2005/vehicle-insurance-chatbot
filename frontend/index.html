@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coverix Chatbot</title>
+  <style>
+      body {
+          font-family: Arial, sans-serif;
+          background: #f0f2f5;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          margin: 0;
+          padding: 0;
+          height: 100vh;
+      }
+      .chat-container {
+          width: 400px;
+          height: 600px;
+          background: white;
+          border-radius: 10px;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+      }
+      .messages {
+          flex: 1;
+          padding: 10px;
+          overflow-y: auto;
+      }
+      .message {
+          margin: 8px 0;
+          padding: 8px 12px;
+          border-radius: 10px;
+          max-width: 80%;
+          word-wrap: break-word;
+      }
+      .user-message {
+          background: #007bff;
+          color: white;
+          align-self: flex-end;
+      }
+      .bot-message {
+          background: #e4e6eb;
+          color: black;
+          align-self: flex-start;
+      }
+      .input-container {
+          display: flex;
+          padding: 10px;
+          border-top: 1px solid #ccc;
+      }
+      .input-container input {
+          flex: 1;
+          padding: 8px 12px;
+          border-radius: 20px;
+          border: 1px solid #ccc;
+          outline: none;
+      }
+      .input-container button {
+          margin-left: 8px;
+          padding: 8px 16px;
+          border: none;
+          border-radius: 20px;
+          background: #007bff;
+          color: white;
+          cursor: pointer;
+      }
+  </style>
+</head>
+<body>
+
+<h2>Coverix Chatbot</h2>
+
+<div class="chat-container">
+  <div class="messages" id="messages"></div>
+  <div class="input-container">
+    <input type="text" id="userInput" placeholder="Type your message..." />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+<script>
+  let conversationId = null;
+
+  async function sendMessage() {
+    const inputEl = document.getElementById("userInput");
+    const messagesEl = document.getElementById("messages");
+    const message = inputEl.value.trim();
+    if (!message) return;
+
+    // Show user message
+    const userDiv = document.createElement("div");
+    userDiv.className = "message user-message";
+    userDiv.textContent = message;
+    messagesEl.appendChild(userDiv);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    inputEl.value = "";
+
+    // Send to backend
+    const response = await fetch("http://127.0.0.1:8000/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: message, conversation_id: conversationId })
+    });
+
+    const data = await response.json();
+    conversationId = data.conversation_id;
+
+    // Show bot response
+    const botDiv = document.createElement("div");
+    botDiv.className = "message bot-message";
+    botDiv.textContent = data.response;
+    messagesEl.appendChild(botDiv);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  // Optionally, start the chat automatically
+  window.onload = async () => {
+    const response = await fetch("http://127.0.0.1:8000/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "", conversation_id: null })
+    });
+    const data = await response.json();
+    conversationId = data.conversation_id;
+
+    const messagesEl = document.getElementById("messages");
+    const botDiv = document.createElement("div");
+    botDiv.className = "message bot-message";
+    botDiv.textContent = data.response;
+    messagesEl.appendChild(botDiv);
+  }
+</script>
+
+</body>
+</html>
