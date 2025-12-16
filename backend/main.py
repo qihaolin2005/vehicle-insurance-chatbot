@@ -6,11 +6,14 @@ import openai
 from dotenv import load_dotenv
 import httpx
 from fastapi.middleware.cors import CORSMiddleware
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
 
 
 load_dotenv()
 app = FastAPI()
 openai.api_key = os.getenv("OPENAI_API_KEY")
+ZENQUOTES_API_URL = os.getenv("ZENQUOTES_API_URL")
 
 
 app.add_middleware(
@@ -70,8 +73,11 @@ async def chat_endpoint(payload: ChatRequest):
     convo = conversations[conversation_id]
 
     convo["messages"].append({"role": "user", "content": payload.message})
+    mood =  await is_annoyed_or_frustrated(payload.message)
+    if mood:
+        bot_response = mood
 
-    if convo["step"] < len(ask):
+    elif convo["step"] < len(ask):
         prompt = ask[convo['step']]
         bot_response = await get_bot_response(prompt)
         convo["step"] += 1
@@ -161,6 +167,23 @@ async def validate_vin(vin: str) -> bool:
     make = data.get("Results", [{}])[0].get("Make", "")
     print(make)
     return bool(make)
+
+async def is_annoyed_or_frustrated(text, threshold=-0.4):
+    analyzer = SentimentIntensityAnalyzer()
+
+    scores = analyzer.polarity_scores(text)
+    if scores["compound"] <= threshold:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(ZENQUOTES_API_URL)
+            data = resp.json()
+
+            # ZenQuotes returns a list with one item
+            quote = data[0]["q"]
+            author = data[0]["a"]
+            return f"{quote} — {author}"
+    else:
+        return None
+
 
 
 
